@@ -1,0 +1,10 @@
+#!/usr/bin/env tea
+/*---
+args:
+  yarn run start
+---*/
+dependencies:
+  npmjs.com: ^9
+  gnu.org/wget: ^1.2
+env:
+  NODE_ENV: dev
