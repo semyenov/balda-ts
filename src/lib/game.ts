@@ -1,69 +1,93 @@
-import { log } from "console";
 
-export class BaldaGame {
-    board: string[][] = []
-    dictionary: Set<string>;
-    words: [string[], string[]] = [[], []];
-    score: [number, number] = [0, 0];
+import { Player } from './player.ts';
 
-    // assuming startingWord is the word with which game is initialised
-    constructor(dictionary: Set<string>, boardSize: number, startingWord: string) {
-        this.dictionary = dictionary;
+export class Position {
+    x: number
+    y: number
 
-        // initializing the board loop
-        for (let i = 0; i < boardSize; i++) {
-            this.board.push(new Array(boardSize).fill('_'));
-        }
-        // setting up the starting word in the middle of the board
-        const startRow = Math.floor(boardSize / 2);
-        for (let j = 0; j < startingWord.length; j++) {
-            this.board[startRow][j] = startingWord[j];
-        }
+    constructor(x: number, y: number) {
+        this.x = x
+        this.y = y
     }
+}
 
-    // checks if 'word' is in the dictionary and can be formed on the board
-    // 'positions' is an array of tuples representing the positions of the letters in 'word' on the board
-    isValidWord(word: string, positions: [number, number][]): boolean {
-        return this.dictionary.has(word) && this.isSequentialOnBoard(positions);
+export class Board {
+    size: number
+    cells: string[][]
+    
+    constructor(size: number) {
+        this.size = size
+        this.cells = Array.from<string>({ length: size }).map(() => {
+            return Array.from<string>({ length: size }).fill('');
+        })
     }
+}
 
-    isSequentialOnBoard(positions: [number, number][]): boolean {
-        // code to check if positions are contiguous (up, down, left, or right) on the board
-        // this can be done by checking if every pair of adjacent positions are neighbors
-        for (let i = 0; i < positions.length - 1; i++) {
-            if (!this.areNeighbors(positions[i], positions[i + 1])) {
-                return false;
-            }
-        }
-        return true;
-    }
+export class Game {
+    currentTurn: Player['id']
+    board: Board
+    players: {[key: string]: Player} = {}
 
-    addLetterToBoard(word: string, positions: [number, number][]): void {
-        for (let i in positions) {
-            this.board[positions[i][0]][positions[i][1]] = word[i];
+    constructor(size: number, players: Player[], startWord: string) {
+        this.board = new Board(size)
+        players.forEach(player => this.players[player.id] = player);
+        this.currentTurn = players[0].id
+
+        // Add startWord in the center of the board
+        const startRow = Math.floor(size / 2);
+        const startCol = Math.floor((size - startWord.length) / 2);
+       
+        for (let i = 0; i < startWord.length; i++) {
+          this.board.cells[startRow][startCol + i] = startWord[i];
         }
     }
 
-    areNeighbors(pos1: [number, number], pos2: [number, number]): boolean {
-        return Math.abs(pos1[0] - pos2[0]) + Math.abs(pos1[1] - pos2[1]) === 1;
+    addLetter(position: Position, letter: string): void {
+        this.board.cells[position.x][position.y] = letter
     }
 
-    // Updates the score
-    updateScore(playerId: number, word: string): void {
-        this.score[playerId] += word.length;
+     // Check if the game is over
+    isGameOver(): boolean {
+        return !this.board.cells.flat().includes('');
     }
 
-    /**
-     * Prints the game board and the current word being constructed.
-     */
-    printBoard(): void {
-        // Print top border of board
-        console.log('---------------------');
+    // Get the current player
+    getCurrentPlayer(): Player {
+        return this.players[this.currentTurn];
+    }
 
-        // Print each row of the board with '|' separating cells
-        for (let i = 0; i < this.board.length; i++) {
-            console.log("| " + this.board[i].join(' | ') + " |");
-            console.log('---------------------'); // Print border after each row
+    // Calculate the next turn
+    calculateNextTurn(): Player['id'] {
+        return Object.values(this.players).find(player => player.id !== this.currentTurn)!.id;
+    }
+
+    // Shift to the next player's turn
+    nextTurn(): void {
+        this.currentTurn = this.calculateNextTurn();
+    }
+
+    // Player makes a move (adds a letter) and the turn changes to the next player
+    makeMove(position: Position, letter: string): void {
+        this.addLetter(position, letter);
+        if (!this.isGameOver()) {
+            this.nextTurn();
         }
+    }
+
+    // Calculate player's score
+    calculateScore(word: string): number {
+        // Each letter equals one point
+        return word.length;
+    }
+
+    // The player plays a word, adding points to their score
+    playWord(word: string): void {
+        this.getCurrentPlayer().score += this.calculateScore(word);
+        // this.makeMove(this.getCurrentPlayer().movePosition(word), this.getCurrentPlayer().moveLetter(word));
+    }
+
+    // Determine the winner
+    getWinner(): Player {
+        return Object.values(this.players).reduce((winner, current) => winner.score > current.score ? winner : current);
     }
 }
